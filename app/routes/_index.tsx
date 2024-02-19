@@ -1,4 +1,9 @@
 import type { MetaFunction } from "@remix-run/node";
+import SearchBox from "~/components/search-box";
+import { useAuthContext } from '~/contexts/auth-context';
+import useWCAFetch from "~/hooks/use-wca-fetch";
+import { useQuery } from "@tanstack/react-query";
+import Button from "~/components/button";
 
 export const meta: MetaFunction = () => {
   return [
@@ -7,35 +12,37 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+interface UserCompsResponse {
+  upcoming_competitions: ApiCompetition[];
+  ongoing_competitions: ApiCompetition[];
+}
+
 export default function Index() {
+  const { signIn, signedIn, user, signOut } = useAuthContext();
+  const wcaApiFetch = useWCAFetch();
+
+  const { data, isFetching } = useQuery<UserCompsResponse>({
+    queryKey: ['userCompetitions'],
+    queryFn:     async () =>
+    await wcaApiFetch(
+      `/users/${user?.id}?upcoming_competitions=true&ongoing_competitions=true`
+    ),
+  });
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-      <h1>Welcome to Remix</h1>
-      <ul>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/blog"
-            rel="noreferrer"
-          >
-            15m Quickstart Blog Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/jokes"
-            rel="noreferrer"
-          >
-            Deep Dive Jokes App Tutorial
-          </a>
-        </li>
-        <li>
-          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-            Remix Docs
-          </a>
-        </li>
-      </ul>
-    </div>
+    <>
+      <SearchBox />
+      { !signedIn() ? 
+        <Button onClick={signIn}>Sign in with WCA</Button> :
+        <Button onClick={signOut}>Sign out</Button>
+      }
+      {
+        user &&
+          <>
+            {data?.ongoing_competitions.map(comp => <li>{comp.name}</li>)}
+            {data?.upcoming_competitions.map(comp => <li>{comp.name}</li>)}
+          </>
+      }
+
+    </>
   );
 }
